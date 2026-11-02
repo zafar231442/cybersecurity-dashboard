@@ -1,0 +1,1498 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>IntelliSOC - Smart Cybersecurity Dashboard</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <!-- Tailwind Config for Custom Theme Colors -->
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        cyber: {
+                            dark: '#060913',
+                            card: '#0d1326',
+                            border: '#1e293b',
+                            cyan: '#00f3ff',
+                            purple: '#8b5cf6',
+                            red: '#ff0055',
+                            amber: '#f59e0b',
+                            green: '#10b981',
+                        }
+                    },
+                    boxShadow: {
+                        'neon-cyan': '0 0 15px rgba(0, 243, 255, 0.25)',
+                        'neon-red': '0 0 15px rgba(255, 0, 85, 0.3)',
+                        'neon-purple': '0 0 15px rgba(139, 92, 246, 0.25)',
+                        'neon-green': '0 0 15px rgba(16, 185, 129, 0.25)',
+                    },
+                    animation: {
+                        'pulse-slow': 'pulse 3s cubic-bezier(0.4, 0, 0.6, 1) infinite',
+                        'scan-line': 'scan 2s linear infinite',
+                    },
+                    keyframes: {
+                        scan: {
+                            '0%': { transform: 'translateY(-100%)' },
+                            '100%': { transform: 'translateY(1000%)' }
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap');
+        
+        body {
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            background-color: #060913;
+            color: #f3f4f6;
+            overflow-x: hidden;
+        }
+
+        .code-font {
+            font-family: 'JetBrains Mono', monospace;
+        }
+
+        /* Glassmorphic background effects */
+        .glass-panel {
+            background: rgba(13, 19, 38, 0.7);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+        }
+
+        .glass-panel-glow {
+            background: rgba(13, 19, 38, 0.85);
+            backdrop-filter: blur(16px);
+            border: 1px solid rgba(0, 243, 255, 0.2);
+            box-shadow: 0 0 20px rgba(0, 243, 255, 0.08);
+        }
+
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #060913;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #1e293b;
+            border-radius: 3px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #00f3ff;
+        }
+
+        /* Glowing radar scanner style */
+        .radar-grid {
+            background-image: radial-gradient(rgba(0, 243, 255, 0.15) 1px, transparent 0);
+            background-size: 24px 24px;
+        }
+
+        .scan-overlay {
+            background: linear-gradient(180deg, transparent 0%, rgba(0, 243, 255, 0.15) 50%, transparent 100%);
+        }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col md:flex-row text-slate-200 antialiased selection:bg-cyber-cyan selection:text-cyber-dark">
+
+    <!-- Sidebar Navigation -->
+    <aside id="sidebar" class="w-full md:w-64 bg-cyber-dark border-b md:border-b-0 md:border-r border-cyber-border flex-shrink-0 z-30 flex flex-col justify-between transition-all duration-300">
+        <div>
+            <!-- Logo Header -->
+            <div class="p-5 flex items-center justify-between border-b border-cyber-border/50">
+                <div class="flex items-center space-x-3">
+                    <div class="relative flex items-center justify-center w-10 h-10 rounded-xl bg-gradient-to-br from-cyber-cyan/20 to-cyber-purple/20 border border-cyber-cyan/40 text-cyber-cyan shadow-neon-cyan">
+                        <i data-lucide="shield-alert" class="w-6 h-6"></i>
+                    </div>
+                    <div>
+                        <h1 class="font-extrabold text-lg tracking-wider text-white flex items-center gap-">
+                            Intelli<span class="text-cyber-cyan">SOC</span>
+                        </h1>
+                        <p class="text-[10px] text-slate-400 code-font tracking-tight">AI THREAT INTELLIGENCE</p>
+                    </div>
+                </div>
+                <!-- Mobile Menu Button -->
+                <button id="mobileMenuBtn" class="md:hidden p-2 text-slate-400 hover:text-white focus:outline-none">
+                    <i data-lucide="menu" class="w-6 h-6"></i>
+                </button>
+            </div>
+
+            <!-- Navigation Links -->
+            <nav id="navMenu" class="hidden md:block p-4 space-y-1.5">
+                <div class="px-3 py-2 text-[11px] font-semibold text-slate-500 uppercase tracking-wider code-font">Modules</div>
+                
+                <button onclick="switchTab('overview')" id="nav-overview" class="nav-btn w-full flex items-center space-x-3 px-4 py-3 rounded-xl font-medium text-sm transition-all duration-200 bg-cyber-cyan/10 text-cyber-cyan border border-cyber-cyan/30 shadow-neon-cyan">
+                    <i data-lucide="layout-dashboard" class="w-5 h-5"></i>
+                    <span>Overview</span>
+                </button>
+
+                <button onclick="switchTab('phishing')" id="nav-phishing" class="nav-btn w-full flex items-center space-x-3 px-4 py-3 rounded-xl font-medium text-sm transition-all duration-200 text-slate-400 hover:text-slate-200 hover:bg-slate-800/50 border border-transparent">
+                    <i data-lucide="globe" class="w-5 h-5"></i>
+                    <span>Phishing Scanner</span>
+                </button>
+
+                <button onclick="switchTab('spam')" id="nav-spam" class="nav-btn w-full flex items-center space-x-3 px-4 py-3 rounded-xl font-medium text-sm transition-all duration-200 text-slate-400 hover:text-slate-200 hover:bg-slate-800/50 border border-transparent">
+                    <i data-lucide="mail" class="w-5 h-5"></i>
+                    <span>Email Inspector</span>
+                </button>
+
+                <button onclick="switchTab('malware')" id="nav-malware" class="nav-btn w-full flex items-center space-x-3 px-4 py-3 rounded-xl font-medium text-sm transition-all duration-200 text-slate-400 hover:text-slate-200 hover:bg-slate-800/50 border border-transparent">
+                    <i data-lucide="file-warning" class="w-5 h-5"></i>
+                    <span>Malware Detector</span>
+                </button>
+
+                <button onclick="switchTab('logs')" id="nav-logs" class="nav-btn w-full flex items-center space-x-3 px-4 py-3 rounded-xl font-medium text-sm transition-all duration-200 text-slate-400 hover:text-slate-200 hover:bg-slate-800/50 border border-transparent">
+                    <i data-lucide="activity" class="w-5 h-5"></i>
+                    <span>Security Logs</span>
+                </button>
+            </nav>
+        </div>
+
+        <!-- Sidebar Footer Status -->
+        <div class="p-4 border-t border-cyber-border/50 hidden md:block">
+            <div class="glass-panel p-3 rounded-xl flex items-center space-x-3">
+                <span class="relative flex h-3 w-3">
+                  <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-cyber-green opacity-75"></span>
+                  <span class="relative inline-flex rounded-full h-3 w-3 bg-cyber-green"></span>
+                </span>
+                <div class="text-xs">
+                    <p class="text-slate-200 font-semibold">Engine Engine Live</p>
+                    <p class="text-slate-400 code-font text-[10px]">v4.18.0 • Heuristics Active</p>
+                </div>
+            </div>
+        </div>
+    </aside>
+
+    <!-- Main Content Area -->
+    <main class="flex-1 flex flex-col min-w-0 overflow-y-auto min-h-screen">
+        
+        <!-- Top Navigation Header -->
+        <header class="border-b border-cyber-border/80 bg-cyber-dark/80 backdrop-blur-md sticky top-0 z-20 px-6 py-4 flex items-center justify-between">
+            <div class="flex items-center space-x-3">
+                <h2 id="page-title" class="text-xl font-bold text-white tracking-wide flex items-center gap-2">
+                    System Intelligence Overview
+                </h2>
+            </div>
+            <div class="flex items-center space-x-4">
+                <!-- System Status Indicator -->
+                <div class="hidden sm:flex items-center space-x-2 px-3 py-1.5 rounded-full bg-slate-900 border border-slate-800 text-xs">
+                    <span class="w-2 h-2 rounded-full bg-cyber-green"></span>
+                    <span class="text-slate-300 font-medium">Realtime Heuristics Enabled</span>
+                </div>
+                <!-- Time Clock -->
+                <div id="live-clock" class="code-font text-xs text-cyber-cyan bg-cyber-card px-3 py-1.5 rounded-lg border border-cyber-border">
+                    00:00:00 UTC
+                </div>
+            </div>
+        </header>
+
+        <!-- Dynamic Content Body -->
+        <div class="p-4 md:p-8 space-y-6 max-w-7xl w-full mx-auto">
+
+            <!-- TAB 1: OVERVIEW -->
+            <section id="view-overview" class="tab-content space-y-6">
+                
+                <!-- Stat Banner Metrics -->
+                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                    <!-- Stat Card 1 -->
+                    <div class="glass-panel p-5 rounded-2xl relative overflow-hidden group hover:border-cyber-cyan/40 transition-all duration-300">
+                        <div class="absolute -right-4 -bottom-4 w-20 h-20 bg-cyber-cyan/5 rounded-full blur-xl group-hover:bg-cyber-cyan/10 transition-all"></div>
+                        <div class="flex items-center justify-between">
+                            <span class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Threats Intercepted</span>
+                            <div class="p-2 rounded-xl bg-cyber-red/10 text-cyber-red border border-cyber-red/20">
+                                <i data-lucide="shield-x" class="w-5 h-5"></i>
+                            </div>
+                        </div>
+                        <div class="mt-4 flex items-baseline">
+                            <span id="stat-threats" class="text-3xl font-extrabold text-white code-font">1,482</span>
+                            <span class="ml-2 text-xs font-semibold text-cyber-green flex items-center">+12.4% <i data-lucide="trending-up" class="w-3 h-3 ml-0.5"></i></span>
+                        </div>
+                        <p class="text-[11px] text-slate-400 mt-1">Phishing, Spam & Executable vectors</p>
+                    </div>
+
+                    <!-- Stat Card 2 -->
+                    <div class="glass-panel p-5 rounded-2xl relative overflow-hidden group hover:border-cyber-cyan/40 transition-all duration-300">
+                        <div class="absolute -right-4 -bottom-4 w-20 h-20 bg-cyber-green/5 rounded-full blur-xl group-hover:bg-cyber-green/10 transition-all"></div>
+                        <div class="flex items-center justify-between">
+                            <span class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Clean Scans</span>
+                            <div class="p-2 rounded-xl bg-cyber-green/10 text-cyber-green border border-cyber-green/20">
+                                <i data-lucide="shield-check" class="w-5 h-5"></i>
+                            </div>
+                        </div>
+                        <div class="mt-4 flex items-baseline">
+                            <span id="stat-clean" class="text-3xl font-extrabold text-white code-font">8,920</span>
+                            <span class="ml-2 text-xs font-semibold text-cyber-green flex items-center">+8.1% <i data-lucide="trending-up" class="w-3 h-3 ml-0.5"></i></span>
+                        </div>
+                        <p class="text-[11px] text-slate-400 mt-1">Verified safe URLs, files & emails</p>
+                    </div>
+
+                    <!-- Stat Card 3 -->
+                    <div class="glass-panel p-5 rounded-2xl relative overflow-hidden group hover:border-cyber-cyan/40 transition-all duration-300">
+                        <div class="absolute -right-4 -bottom-4 w-20 h-20 bg-cyber-amber/5 rounded-full blur-xl group-hover:bg-cyber-amber/10 transition-all"></div>
+                        <div class="flex items-center justify-between">
+                            <span class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Avg Risk Score</span>
+                            <div class="p-2 rounded-xl bg-cyber-amber/10 text-cyber-amber border border-cyber-amber/20">
+                                <i data-lucide="gauge" class="w-5 h-5"></i>
+                            </div>
+                        </div>
+                        <div class="mt-4 flex items-baseline">
+                            <span id="stat-avg-risk" class="text-3xl font-extrabold text-white code-font">18.4</span>
+                            <span class="ml-2 text-xs font-semibold text-slate-400">/ 100</span>
+                        </div>
+                        <p class="text-[11px] text-slate-400 mt-1">Low exposure index</p>
+                    </div>
+
+                    <!-- Stat Card 4 -->
+                    <div class="glass-panel p-5 rounded-2xl relative overflow-hidden group hover:border-cyber-cyan/40 transition-all duration-300">
+                        <div class="absolute -right-4 -bottom-4 w-20 h-20 bg-cyber-purple/5 rounded-full blur-xl group-hover:bg-cyber-purple/10 transition-all"></div>
+                        <div class="flex items-center justify-between">
+                            <span class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Active Protection</span>
+                            <div class="p-2 rounded-xl bg-cyber-purple/10 text-cyber-purple border border-cyber-purple/20">
+                                <i data-lucide="cpu" class="w-5 h-5"></i>
+                            </div>
+                        </div>
+                        <div class="mt-4 flex items-baseline">
+                            <span class="text-3xl font-extrabold text-cyber-cyan code-font">OPTIMAL</span>
+                        </div>
+                        <p class="text-[11px] text-slate-400 mt-1">All 3 engines running active</p>
+                    </div>
+                </div>
+
+                <!-- Quick Action Feature Launchpad -->
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                    
+                    <!-- Feature Quick Link 1 -->
+                    <div onclick="switchTab('phishing')" class="glass-panel p-6 rounded-2xl border border-cyber-border hover:border-cyber-cyan/60 hover:shadow-neon-cyan transition-all cursor-pointer group flex flex-col justify-between">
+                        <div>
+                            <div class="flex items-center justify-between mb-4">
+                                <div class="w-12 h-12 rounded-xl bg-cyber-cyan/10 border border-cyber-cyan/30 text-cyber-cyan flex items-center justify-center group-hover:scale-110 transition-transform">
+                                    <i data-lucide="globe" class="w-6 h-6"></i>
+                                </div>
+                                <span class="text-xs font-semibold text-cyber-cyan group-hover:translate-x-1 transition-transform flex items-center">Scan URL <i data-lucide="arrow-right" class="w-4 h-4 ml-1"></i></span>
+                            </div>
+                            <h3 class="text-lg font-bold text-white mb-1">Phishing Web Detector</h3>
+                            <p class="text-xs text-slate-400 leading-relaxed">
+                                Heuristic URL breakdown checking typosquatting, suspicious TLDs, SSL integrity, and obfuscated subdomains.
+                            </p>
+                        </div>
+                        <div class="mt-6 pt-4 border-t border-slate-800/80 flex justify-between items-center text-[11px] text-slate-400 code-font">
+                            <span>Rule Engine: 12 Checks</span>
+                            <span class="text-cyber-green">Online</span>
+                        </div>
+                    </div>
+
+                    <!-- Feature Quick Link 2 -->
+                    <div onclick="switchTab('spam')" class="glass-panel p-6 rounded-2xl border border-cyber-border hover:border-cyber-purple/60 hover:shadow-neon-purple transition-all cursor-pointer group flex flex-col justify-between">
+                        <div>
+                            <div class="flex items-center justify-between mb-4">
+                                <div class="w-12 h-12 rounded-xl bg-cyber-purple/10 border border-cyber-purple/30 text-cyber-purple flex items-center justify-center group-hover:scale-110 transition-transform">
+                                    <i data-lucide="mail" class="w-6 h-6"></i>
+                                </div>
+                                <span class="text-xs font-semibold text-cyber-purple group-hover:translate-x-1 transition-transform flex items-center">Analyze Mail <i data-lucide="arrow-right" class="w-4 h-4 ml-1"></i></span>
+                            </div>
+                            <h3 class="text-lg font-bold text-white mb-1">Email Spam & Phish Analyzer</h3>
+                            <p class="text-xs text-slate-400 leading-relaxed">
+                                Detect urgency patterns, credential harvester wording, fake sender domain spoofing, and dangerous embedded links.
+                            </p>
+                        </div>
+                        <div class="mt-6 pt-4 border-t border-slate-800/80 flex justify-between items-center text-[11px] text-slate-400 code-font">
+                            <span>NLP Lexicon: Active</span>
+                            <span class="text-cyber-green">Online</span>
+                        </div>
+                    </div>
+
+                    <!-- Feature Quick Link 3 -->
+                    <div onclick="switchTab('malware')" class="glass-panel p-6 rounded-2xl border border-cyber-border hover:border-cyber-red/60 hover:shadow-neon-red transition-all cursor-pointer group flex flex-col justify-between">
+                        <div>
+                            <div class="flex items-center justify-between mb-4">
+                                <div class="w-12 h-12 rounded-xl bg-cyber-red/10 border border-cyber-red/30 text-cyber-red flex items-center justify-center group-hover:scale-110 transition-transform">
+                                    <i data-lucide="file-warning" class="w-6 h-6"></i>
+                                </div>
+                                <span class="text-xs font-semibold text-cyber-red group-hover:translate-x-1 transition-transform flex items-center">Inspect File <i data-lucide="arrow-right" class="w-4 h-4 ml-1"></i></span>
+                            </div>
+                            <h3 class="text-lg font-bold text-white mb-1">Malware & Payload Inspector</h3>
+                            <p class="text-xs text-slate-400 leading-relaxed">
+                                Drop executables or scripts to analyze dual extensions, threat hash lookup, and suspicious byte sequence patterns.
+                            </p>
+                        </div>
+                        <div class="mt-6 pt-4 border-t border-slate-800/80 flex justify-between items-center text-[11px] text-slate-400 code-font">
+                            <span>Hash Lookup DB: 4.2M</span>
+                            <span class="text-cyber-green">Online</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Recent Activity Feed Summary -->
+                <div class="glass-panel rounded-2xl p-6 border border-cyber-border">
+                    <div class="flex items-center justify-between mb-4">
+                        <div class="flex items-center space-x-2">
+                            <i data-lucide="activity" class="w-5 h-5 text-cyber-cyan"></i>
+                            <h3 class="font-bold text-white text-base">Live Activity Stream</h3>
+                        </div>
+                        <button onclick="switchTab('logs')" class="text-xs text-cyber-cyan hover:underline font-semibold">View All Logs &rarr;</button>
+                    </div>
+                    
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-left text-xs code-font">
+                            <thead class="text-slate-400 border-b border-cyber-border uppercase bg-slate-900/40">
+                                <tr>
+                                    <th class="p-3">Timestamp</th>
+                                    <th class="p-3">Vector Type</th>
+                                    <th class="p-3">Target / Target Item</th>
+                                    <th class="p-3">Verdict</th>
+                                    <th class="p-3">Risk Score</th>
+                                </tr>
+                            </thead>
+                            <tbody id="overview-log-table" class="divide-y divide-slate-800/50">
+                                <!-- Dynamic rows inserted by JavaScript -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+            </section>
+
+            <!-- TAB 2: PHISHING WEBSITE DETECTION -->
+            <section id="view-phishing" class="tab-content hidden space-y-6">
+                
+                <!-- Main URL Input Panel -->
+                <div class="glass-panel p-6 rounded-2xl border border-cyber-border space-y-4">
+                    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                        <div>
+                            <h3 class="text-lg font-bold text-white flex items-center gap-2">
+                                <i data-lucide="globe" class="text-cyber-cyan"></i> Realtime Web URL Scanner
+                            </h3>
+                            <p class="text-xs text-slate-400">Scan URLs for typosquatting, credential harvesting, SSL flaws, and suspicious TLDs.</p>
+                        </div>
+                        <!-- Demo Buttons -->
+                        <div class="flex items-center space-x-2">
+                            <button onclick="loadDemoPhishing('malicious')" class="px-3 py-1.5 rounded-lg text-xs bg-cyber-red/20 text-cyber-red hover:bg-cyber-red/30 border border-cyber-red/30 transition-all font-semibold">
+                                Demo Threat URL
+                            </button>
+                            <button onclick="loadDemoPhishing('safe')" class="px-3 py-1.5 rounded-lg text-xs bg-cyber-green/20 text-cyber-green hover:bg-cyber-green/30 border border-cyber-green/30 transition-all font-semibold">
+                                Demo Safe URL
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="flex flex-col sm:flex-row gap-3">
+                        <div class="relative flex-1">
+                            <div class="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
+                                <i data-lucide="link" class="w-4 h-4"></i>
+                            </div>
+                            <input type="text" id="phishing-url-input" placeholder="e.g. https://paypal-security-update-login.com/account/login" 
+                                class="w-full pl-10 pr-4 py-3 bg-cyber-dark border border-slate-700 rounded-xl text-sm focus:outline-none focus:border-cyber-cyan focus:ring-1 focus:ring-cyber-cyan code-font text-white transition-all">
+                        </div>
+                        <button onclick="analyzePhishingUrl()" id="phishing-btn" class="px-6 py-3 bg-cyber-cyan hover:bg-cyan-400 text-cyber-dark font-bold rounded-xl text-sm transition-all flex items-center justify-center space-x-2 shadow-neon-cyan">
+                            <i data-lucide="search" class="w-4 h-4"></i>
+                            <span>Scan Web Domain</span>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Analysis Results Overlay/Container -->
+                <div id="phishing-results" class="hidden space-y-6">
+                    
+                    <!-- Verdict Top Bar -->
+                    <div id="phishing-verdict-card" class="glass-panel p-6 rounded-2xl border flex flex-col md:flex-row items-center justify-between gap-4">
+                        <div class="flex items-center space-x-4">
+                            <div id="phishing-status-icon" class="w-16 h-16 rounded-2xl flex items-center justify-center text-white">
+                                <!-- Dynamic Icon -->
+                            </div>
+                            <div>
+                                <div class="flex items-center space-x-3">
+                                    <span id="phishing-status-badge" class="px-3 py-1 text-xs font-extrabold rounded-full uppercase tracking-wider">
+                                        <!-- Dynamic Status -->
+                                    </span>
+                                    <span id="phishing-risk-score" class="text-sm font-semibold code-font text-slate-300">
+                                        <!-- Dynamic Risk Score -->
+                                    </span>
+                                </div>
+                                <h4 id="phishing-target-domain" class="text-lg font-bold text-white mt-1 code-font break-all">--</h4>
+                                <p id="phishing-verdict-summary" class="text-xs text-slate-400 mt-0.5">--</p>
+                            </div>
+                        </div>
+
+                        <!-- Gauge Visual -->
+                        <div class="flex flex-col items-center md:items-end w-full md:w-auto">
+                            <span class="text-[11px] text-slate-400 code-font uppercase tracking-wider mb-1">Calculated Threat Index</span>
+                            <div class="w-48 bg-slate-800 rounded-full h-3 overflow-hidden border border-slate-700">
+                                <div id="phishing-risk-bar" class="h-full transition-all duration-1000 bg-cyber-green" style="width: 0%"></div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Detailed Indicators Grid -->
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        
+                        <!-- Check Breakdown List -->
+                        <div class="glass-panel p-6 rounded-2xl border border-cyber-border space-y-4">
+                            <h4 class="font-bold text-white text-sm flex items-center gap-2 border-b border-slate-800 pb-3">
+                                <i data-lucide="list-checks" class="text-cyber-cyan w-4 h-4"></i>
+                                Heuristic Checklist Breakdown
+                            </h4>
+                            <div id="phishing-checks-list" class="space-y-3">
+                                <!-- Dynamic Check Elements -->
+                            </div>
+                        </div>
+
+                        <!-- Technical Deep Dive Metadata -->
+                        <div class="glass-panel p-6 rounded-2xl border border-cyber-border space-y-4">
+                            <h4 class="font-bold text-white text-sm flex items-center gap-2 border-b border-slate-800 pb-3">
+                                <i data-lucide="terminal" class="text-cyber-purple w-4 h-4"></i>
+                                Domain Metadata & Extraction
+                            </h4>
+                            
+                            <div class="space-y-2 text-xs code-font">
+                                <div class="flex justify-between p-2.5 rounded-lg bg-cyber-dark/60 border border-slate-800">
+                                    <span class="text-slate-400">Extracted Protocol:</span>
+                                    <span id="meta-protocol" class="text-slate-200">--</span>
+                                </div>
+                                <div class="flex justify-between p-2.5 rounded-lg bg-cyber-dark/60 border border-slate-800">
+                                    <span class="text-slate-400">SSL Certificate Status:</span>
+                                    <span id="meta-ssl" class="text-slate-200">--</span>
+                                </div>
+                                <div class="flex justify-between p-2.5 rounded-lg bg-cyber-dark/60 border border-slate-800">
+                                    <span class="text-slate-400">Suspicious TLD Check:</span>
+                                    <span id="meta-tld" class="text-slate-200">--</span>
+                                </div>
+                                <div class="flex justify-between p-2.5 rounded-lg bg-cyber-dark/60 border border-slate-800">
+                                    <span class="text-slate-400">Embedded Credentials / @:</span>
+                                    <span id="meta-creds" class="text-slate-200">--</span>
+                                </div>
+                                <div class="flex justify-between p-2.5 rounded-lg bg-cyber-dark/60 border border-slate-800">
+                                    <span class="text-slate-400">Subdomain Depth:</span>
+                                    <span id="meta-subdomains" class="text-slate-200">--</span>
+                                </div>
+                            </div>
+                        </div>
+
+                    </div>
+                </div>
+
+            </section>
+
+            <!-- TAB 3: EMAIL SPAM & PHISHING DETECTION -->
+            <section id="view-spam" class="tab-content hidden space-y-6">
+                
+                <div class="glass-panel p-6 rounded-2xl border border-cyber-border space-y-4">
+                    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                        <div>
+                            <h3 class="text-lg font-bold text-white flex items-center gap-2">
+                                <i data-lucide="mail" class="text-cyber-purple"></i> Email Payload & Content Inspector
+                            </h3>
+                            <p class="text-xs text-slate-400">Analyze email subject lines, body copy, and headers for psychological urgency, domain spoofing, and malicious links.</p>
+                        </div>
+                        <!-- Demo Buttons -->
+                         <!-- Demo Buttons & Gmail Connection -->
+        <div class="flex items-center space-x-2">
+          <!-- Live Gmail Connect Button -->
+          <button 
+            id="gmail-connect-btn" 
+            onclick="connectGmail()" 
+            class="px-3 py-1.5 rounded-lg text-xs bg-red-500/20 text-red-400 hover:bg-red-500/30 transition flex items-center gap-1.5 font-medium border border-red-500/30">
+            <i class="fa-brands fa-google"></i> Connect Gmail
+          </button>
+<!-- Disconnect Gmail Button -->
+        <button
+          id="disconnect-gmail-btn"
+          onclick="disconnectGmail()"
+          class="px-3 py-1.5 rounded-lg text-xs bg-red-600/20 text-red-400 hover:bg-red-600/30 border border-red-500/30 transition flex items-center gap-1.5 hidden"
+        >
+          <i class="fa-solid fa-power-off"></i> Disconnect Gmail
+        </button>
+          <button onclick="loadDemoEmail('phish')" class="px-3 py-1.5 rounded-lg text-xs bg-cyber-red/20 text-cyber-red hover:bg-cyber-red/30 transition">
+            Load Phishing Mail
+          </button>
+          <button onclick="loadDemoEmail('spam')" class="px-3 py-1.5 rounded-lg text-xs bg-cyber-amber/20 text-cyber-amber hover:bg-cyber-amber/30 transition">
+            Load Marketing Spam
+          </button>
+          <button onclick="loadDemoEmail('clean')" class="px-3 py-1.5 rounded-lg text-xs bg-cyber-green/20 text-cyber-green hover:bg-cyber-green/30 transition">
+            Load Clean Mail
+          </button>
+        </div>
+                    <div class="space-y-3">
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+                            <div>
+                                <label class="block text-xs font-semibold text-slate-400 mb-1">Sender Email / Header From</label>
+                                <input type="text" id="email-sender-input" placeholder="e.g. security-alert@paypaI-support.com" 
+                                    class="w-full px-3.5 py-2.5 bg-cyber-dark border border-slate-700 rounded-xl text-sm focus:outline-none focus:border-cyber-purple code-font text-white">
+                            </div>
+                            <div>
+                                <label class="block text-xs font-semibold text-slate-400 mb-1">Subject Line</label>
+                                <input type="text" id="email-subject-input" placeholder="e.g. URGENT: Your Account Has Been Suspended - Verify Immediately!" 
+                                    class="w-full px-3.5 py-2.5 bg-cyber-dark border border-slate-700 rounded-xl text-sm focus:outline-none focus:border-cyber-purple code-font text-white">
+                            </div>
+                        </div>
+
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-400 mb-1">Email Body & Raw Content</label>
+                            <textarea id="email-body-input" rows="5" placeholder="Paste full email text or message content here..." 
+                                class="w-full p-3.5 bg-cyber-dark border border-slate-700 rounded-xl text-sm focus:outline-none focus:border-cyber-purple code-font text-white resize-none"></textarea>
+                        </div>
+
+                        <button onclick="analyzeEmailContent()" id="email-btn" class="w-full py-3 bg-cyber-purple hover:bg-purple-600 text-white font-bold rounded-xl text-sm transition-all flex items-center justify-center space-x-2 shadow-neon-purple">
+                            <i data-lucide="scan" class="w-4 h-4"></i>
+                            <span>Execute Deep Email Analysis</span>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Email Results Container -->
+                <div id="email-results" class="hidden space-y-6">
+                    
+                    <div id="email-verdict-card" class="glass-panel p-6 rounded-2xl border flex flex-col md:flex-row items-center justify-between gap-4">
+                        <div class="flex items-center space-x-4">
+                            <div id="email-status-icon" class="w-16 h-16 rounded-2xl flex items-center justify-center text-white">
+                                <!-- Dynamic Icon -->
+                            </div>
+                            <div>
+                                <div class="flex items-center space-x-3">
+                                    <span id="email-status-badge" class="px-3 py-1 text-xs font-extrabold rounded-full uppercase tracking-wider">
+                                        <!-- Dynamic Badge -->
+                                    </span>
+                                    <span id="email-confidence-score" class="text-sm font-semibold code-font text-slate-300">
+                                        <!-- Score -->
+                                    </span>
+                                </div>
+                                <h4 id="email-verdict-title" class="text-lg font-bold text-white mt-1">--</h4>
+                                <p id="email-verdict-desc" class="text-xs text-slate-400 mt-0.5">--</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Highlighted Text & Flags Grid -->
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        
+                        <!-- Highlighted Content Panel -->
+                        <div class="glass-panel p-6 rounded-2xl border border-cyber-border space-y-3">
+                            <h4 class="font-bold text-white text-sm flex items-center gap-2 border-b border-slate-800 pb-3">
+                                <i data-lucide="highlighter" class="text-cyber-purple w-4 h-4"></i>
+                                Flagged Keyword Highlights
+                            </h4>
+                            <div id="email-highlighted-box" class="p-4 rounded-xl bg-cyber-dark/80 border border-slate-800 text-xs code-font leading-relaxed text-slate-300 whitespace-pre-wrap max-h-64 overflow-y-auto">
+                                <!-- Text with highlighted spans -->
+                            </div>
+                        </div>
+
+                        <!-- Flagged Reasons & Triggers -->
+                        <div class="glass-panel p-6 rounded-2xl border border-cyber-border space-y-3">
+                            <h4 class="font-bold text-white text-sm flex items-center gap-2 border-b border-slate-800 pb-3">
+                                <i data-lucide="alert-triangle" class="text-cyber-amber w-4 h-4"></i>
+                                Threat Trigger Analysis
+                            </h4>
+                            <div id="email-triggers-list" class="space-y-2.5">
+                                <!-- Dynamic triggers list -->
+                            </div>
+                        </div>
+
+                    </div>
+                </div>
+
+            </section>
+
+            <!-- TAB 4: MALWARE & FILE THREAT SCANNER -->
+            <section id="view-malware" class="tab-content hidden space-y-6">
+                
+                <div class="glass-panel p-6 rounded-2xl border border-cyber-border space-y-4">
+                    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                        <div>
+                            <h3 class="text-lg font-bold text-white flex items-center gap-2">
+                                <i data-lucide="file-warning" class="text-cyber-red"></i> Executable & File Threat Dropzone
+                            </h3>
+                            <p class="text-xs text-slate-400">Upload or drag & drop files to simulate binary signature inspection, hash lookup, and dual-extension analysis.</p>
+                        </div>
+                        <!-- Demo Buttons -->
+                        <div class="flex items-center space-x-2">
+                            <button onclick="loadDemoFile('malware')" class="px-3 py-1.5 rounded-lg text-xs bg-cyber-red/20 text-cyber-red hover:bg-cyber-red/30 border border-cyber-red/30 transition-all font-semibold">
+                                Demo Trojan Payload
+                            </button>
+                            <button onclick="loadDemoFile('script')" class="px-3 py-1.5 rounded-lg text-xs bg-cyber-amber/20 text-cyber-amber hover:bg-cyber-amber/30 border border-cyber-amber/30 transition-all font-semibold">
+                                Demo Suspicious Script
+                            </button>
+                            <button onclick="loadDemoFile('safe')" class="px-3 py-1.5 rounded-lg text-xs bg-cyber-green/20 text-cyber-green hover:bg-cyber-green/30 border border-cyber-green/30 transition-all font-semibold">
+                                Demo Safe Document
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Dropzone -->
+                    <div id="dropzone" class="border-2 border-dashed border-slate-700 hover:border-cyber-cyan rounded-2xl p-8 text-center cursor-pointer transition-all bg-cyber-dark/40 hover:bg-cyber-dark/80 group">
+                        <input type="file" id="file-input" class="hidden" onchange="handleFileSelect(event)">
+                        <div class="flex flex-col items-center justify-center space-y-3">
+                            <div class="w-14 h-14 rounded-full bg-cyber-red/10 border border-cyber-red/30 text-cyber-red flex items-center justify-center group-hover:scale-110 transition-transform shadow-neon-red">
+                                <i data-lucide="upload-cloud" class="w-7 h-7"></i>
+                            </div>
+                            <div>
+                                <p class="text-sm font-semibold text-slate-200">Drag and drop file here, or <span class="text-cyber-cyan hover:underline">browse file</span></p>
+                                <p class="text-[11px] text-slate-500 mt-1">Supports Executables (.exe, .scr), Scripts (.vbs, .bat, .js), Documents, ZIP archives</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- File Details Preview -->
+                    <div id="selected-file-card" class="hidden p-4 rounded-xl bg-cyber-dark border border-slate-700 flex items-center justify-between">
+                        <div class="flex items-center space-x-3">
+                            <div class="p-2.5 bg-slate-800 rounded-lg text-cyber-cyan">
+                                <i data-lucide="file-code" class="w-6 h-6"></i>
+                            </div>
+                            <div>
+                                <p id="file-name" class="text-sm font-bold text-white code-font">filename.exe</p>
+                                <p id="file-size" class="text-xs text-slate-400 code-font">0 KB</p>
+                            </div>
+                        </div>
+                        <button onclick="analyzeFile()" id="file-scan-btn" class="px-5 py-2.5 bg-cyber-red hover:bg-red-600 text-white font-bold rounded-xl text-xs transition-all flex items-center space-x-2 shadow-neon-red">
+                            <i data-lucide="shield-search" class="w-4 h-4"></i>
+                            <span>Inspect File Vector</span>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Malware Scanner Results Container -->
+                <div id="malware-results" class="hidden space-y-6">
+                    
+                    <div id="malware-verdict-card" class="glass-panel p-6 rounded-2xl border flex flex-col md:flex-row items-center justify-between gap-4">
+                        <div class="flex items-center space-x-4">
+                            <div id="malware-status-icon" class="w-16 h-16 rounded-2xl flex items-center justify-center text-white">
+                                <!-- Dynamic Icon -->
+                            </div>
+                            <div>
+                                <div class="flex items-center space-x-3">
+                                    <span id="malware-status-badge" class="px-3 py-1 text-xs font-extrabold rounded-full uppercase tracking-wider">
+                                        <!-- Badge -->
+                                    </span>
+                                    <span id="malware-threat-score" class="text-sm font-semibold code-font text-slate-300">
+                                        <!-- Score -->
+                                    </span>
+                                </div>
+                                <h4 id="malware-verdict-title" class="text-lg font-bold text-white mt-1">--</h4>
+                                <p id="malware-verdict-desc" class="text-xs text-slate-400 mt-0.5">--</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Technical Inspection Details -->
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        
+                        <!-- Hash & Static Metadata -->
+                        <div class="glass-panel p-6 rounded-2xl border border-cyber-border space-y-3">
+                            <h4 class="font-bold text-white text-sm flex items-center gap-2 border-b border-slate-800 pb-3">
+                                <i data-lucide="fingerprint" class="text-cyber-cyan w-4 h-4"></i>
+                                Simulated Hash & Signature Metadata
+                            </h4>
+                            <div class="space-y-2 text-xs code-font">
+                                <div>
+                                    <span class="text-slate-400 block mb-0.5">Simulated MD5 Hash:</span>
+                                    <div id="hash-md5" class="p-2 bg-cyber-dark/80 rounded-lg border border-slate-800 text-cyber-cyan break-all">--</div>
+                                </div>
+                                <div>
+                                    <span class="text-slate-400 block mb-0.5">Simulated SHA256 Hash:</span>
+                                    <div id="hash-sha256" class="p-2 bg-cyber-dark/80 rounded-lg border border-slate-800 text-cyber-cyan break-all">--</div>
+                                </div>
+                                <div>
+                                    <span class="text-slate-400 block mb-0.5">Threat Database Lookup:</span>
+                                    <div id="hash-db-status" class="p-2 bg-cyber-dark/80 rounded-lg border border-slate-800 text-slate-300">--</div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Rule Findings -->
+                        <div class="glass-panel p-6 rounded-2xl border border-cyber-border space-y-3">
+                            <h4 class="font-bold text-white text-sm flex items-center gap-2 border-b border-slate-800 pb-3">
+                                <i data-lucide="bug" class="text-cyber-red w-4 h-4"></i>
+                                Static Analysis Findings
+                            </h4>
+                            <div id="malware-checks-list" class="space-y-2.5">
+                                <!-- Dynamic File checks -->
+                            </div>
+                        </div>
+
+                    </div>
+                </div>
+
+            </section>
+
+            <!-- TAB 5: SECURITY LOGS & HISTORY -->
+            <section id="view-logs" class="tab-content hidden space-y-6">
+                
+                <div class="glass-panel p-6 rounded-2xl border border-cyber-border space-y-4">
+                    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                        <div>
+                            <h3 class="text-lg font-bold text-white flex items-center gap-2">
+                                <i data-lucide="activity" class="text-cyber-cyan"></i> Realtime Incident Logs Feed
+                            </h3>
+                            <p class="text-xs text-slate-400">All historical web, mail, and file scanning interactions logged in sequence.</p>
+                        </div>
+                        <div class="flex items-center space-x-2">
+                            <button onclick="clearLogs()" class="px-3.5 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-xs font-semibold text-slate-300 border border-slate-700 transition-all flex items-center gap-1.5">
+                                <i data-lucide="trash-2" class="w-3.5 h-3.5"></i> Clear Log Memory
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-left text-xs code-font">
+                            <thead class="text-slate-400 border-b border-cyber-border uppercase bg-slate-900/60">
+                                <tr>
+                                    <th class="p-3">ID / Timestamp</th>
+                                    <th class="p-3">Module Vector</th>
+                                    <th class="p-3">Target Payload / Query</th>
+                                    <th class="p-3">Verdict Result</th>
+                                    <th class="p-3">Risk Score</th>
+                                </tr>
+                            </thead>
+                            <tbody id="full-log-table" class="divide-y divide-slate-800/50">
+                                <!-- Dynamic rows -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+            </section>
+
+        </div>
+    </main>
+
+    <script>
+        // --- GLOBAL STATE & MEMORY ---
+        let securityLogs = [
+            {
+                id: 'LOG-8812',
+                timestamp: new Date(Date.now() - 120000).toISOString().replace('T', ' ').substring(0, 19),
+                vector: 'Phishing Web',
+                target: 'https://paypal-login-security-check.com/update',
+                verdict: 'MALICIOUS',
+                score: 88
+            },
+            {
+                id: 'LOG-8811',
+                timestamp: new Date(Date.now() - 450000).toISOString().replace('T', ' ').substring(0, 19),
+                vector: 'Email Inspector',
+                target: 'Urgent Wire Transfer Request #49102',
+                verdict: 'SUSPICIOUS',
+                score: 65
+            },
+            {
+                id: 'LOG-8810',
+                timestamp: new Date(Date.now() - 1200000).toISOString().replace('T', ' ').substring(0, 19),
+                vector: 'Malware Inspector',
+                target: 'invoice_march_2026.pdf.exe',
+                verdict: 'MALICIOUS',
+                score: 95
+            },
+            {
+                id: 'LOG-8809',
+                timestamp: new Date(Date.now() - 3600000).toISOString().replace('T', ' ').substring(0, 19),
+                vector: 'Phishing Web',
+                target: 'https://github.com/trending',
+                verdict: 'SAFE',
+                score: 0
+            }
+        ];
+
+        let selectedFileObject = null;
+
+        // Initialize icons and initial log rendering on DOM Load
+        document.addEventListener('DOMContentLoaded', () => {
+            lucide.createIcons();
+            startLiveClock();
+            renderLogs();
+
+            // Mobile menu toggle
+            const mobileBtn = document.getElementById('mobileMenuBtn');
+            const navMenu = document.getElementById('navMenu');
+            mobileBtn.addEventListener('click', () => {
+                navMenu.classList.toggle('hidden');
+            });
+
+            // File Dropzone setup
+            const dropzone = document.getElementById('dropzone');
+            const fileInput = document.getElementById('file-input');
+
+            dropzone.addEventListener('click', () => fileInput.click());
+            dropzone.addEventListener('dragover', (e) => {
+                e.preventDefault();
+                dropzone.classList.add('border-cyber-cyan', 'bg-cyber-dark/80');
+            });
+            dropzone.addEventListener('dragleave', () => {
+                dropzone.classList.remove('border-cyber-cyan', 'bg-cyber-dark/80');
+            });
+            dropzone.addEventListener('drop', (e) => {
+                e.preventDefault();
+                dropzone.classList.remove('border-cyber-cyan', 'bg-cyber-dark/80');
+                if (e.dataTransfer.files.length) {
+                    handleFileSelection(e.dataTransfer.files[0]);
+                }
+            });
+        });
+
+        // --- CLOCK & NAVIGATION UTILS ---
+        function startLiveClock() {
+            setInterval(() => {
+                const now = new Date();
+                document.getElementById('live-clock').innerText = now.toISOString().replace('T', ' ').substring(0, 19) + ' UTC';
+            }, 1000);
+        }
+
+        function switchTab(tabId) {
+            // Hide all tabs
+            document.querySelectorAll('.tab-content').forEach(el => el.classList.add('hidden'));
+            
+            // Show selected tab
+            document.getElementById(`view-${tabId}`).classList.remove('hidden');
+
+            // Navigation Active Styles
+            document.querySelectorAll('.nav-btn').forEach(btn => {
+                btn.className = "nav-btn w-full flex items-center space-x-3 px-4 py-3 rounded-xl font-medium text-sm transition-all duration-200 text-slate-400 hover:text-slate-200 hover:bg-slate-800/50 border border-transparent";
+            });
+
+            const activeBtn = document.getElementById(`nav-${tabId}`);
+            if (activeBtn) {
+                if(tabId === 'phishing') {
+                    activeBtn.className = "nav-btn w-full flex items-center space-x-3 px-4 py-3 rounded-xl font-medium text-sm transition-all duration-200 bg-cyber-cyan/10 text-cyber-cyan border border-cyber-cyan/30 shadow-neon-cyan";
+                } else if(tabId === 'spam') {
+                    activeBtn.className = "nav-btn w-full flex items-center space-x-3 px-4 py-3 rounded-xl font-medium text-sm transition-all duration-200 bg-cyber-purple/10 text-cyber-purple border border-cyber-purple/30 shadow-neon-purple";
+                } else if(tabId === 'malware') {
+                    activeBtn.className = "nav-btn w-full flex items-center space-x-3 px-4 py-3 rounded-xl font-medium text-sm transition-all duration-200 bg-cyber-red/10 text-cyber-red border border-cyber-red/30 shadow-neon-red";
+                } else {
+                    activeBtn.className = "nav-btn w-full flex items-center space-x-3 px-4 py-3 rounded-xl font-medium text-sm transition-all duration-200 bg-cyber-cyan/10 text-cyber-cyan border border-cyber-cyan/30 shadow-neon-cyan";
+                }
+            }
+
+            // Update page header title
+            const titles = {
+                'overview': 'System Intelligence Overview',
+                'phishing': 'Phishing Website Detection Engine',
+                'spam': 'Email Spam & Phishing Analyzer',
+                'malware': 'Malware & File Payload Inspector',
+                'logs': 'Security Incident Logs'
+            };
+            document.getElementById('page-title').innerText = titles[tabId];
+            
+            // Re-render icons dynamically
+            lucide.createIcons();
+        }
+
+        // --- STREAMING_CHUNK:Phishing Detection Logic Implementation... ---
+        // --- 1. PHISHING DETECTION MODULE ---
+        function loadDemoPhishing(type) {
+            const input = document.getElementById('phishing-url-input');
+            if (type === 'malicious') {
+                input.value = "http://paypal-security-update.account-verification-login.tk/login@account";
+            } else {
+                input.value = "https://www.github.com/explore";
+            }
+        }
+
+        function analyzePhishingUrl() {
+            const urlInput = document.getElementById('phishing-url-input').value.trim();
+            if (!urlInput) {
+                alert("Please enter a URL to scan.");
+                return;
+            }
+
+            // Heuristic Evaluation Rules
+            let score = 0;
+            let checks = [];
+            let lowerUrl = urlInput.toLowerCase();
+
+            // 1. SSL Protocol Check
+            const hasHttps = lowerUrl.startsWith('https://');
+            if (!hasHttps) {
+                score += 25;
+                checks.push({ name: 'SSL Security', status: 'fail', desc: 'No HTTPS secure connection detected (Insecure HTTP standard).' });
+            } else {
+                checks.push({ name: 'SSL Security', status: 'pass', desc: 'HTTPS protocol is enabled.' });
+            }
+
+            // 2. Suspicious TLD Check
+            const suspiciousTLDs = ['.tk', '.ml', '.ga', '.cf', '.gq', '.xyz', '.top', '.work', '.click', '.zip'];
+            const hasSuspiciousTLD = suspiciousTLDs.some(tld => lowerUrl.includes(tld));
+            if (hasSuspiciousTLD) {
+                score += 30;
+                checks.push({ name: 'Domain TLD Reputation', status: 'fail', desc: 'High-risk or frequently abused TLD extension detected.' });
+            } else {
+                checks.push({ name: 'Domain TLD Reputation', status: 'pass', desc: 'Standard reputable top-level domain.' });
+            }
+
+            // 3. Keyword / Typosquatting Check
+            const targetKeywords = ['paypal', 'bank', 'login', 'verify', 'account', 'secure', 'update', 'signin', 'password', 'apple', 'microsoft'];
+            let matchedKeywords = targetKeywords.filter(kw => lowerUrl.includes(kw));
+            if (matchedKeywords.length >= 2) {
+                score += 35;
+                checks.push({ name: 'Credential Keyword Trigger', status: 'fail', desc: `Multiple sensitive target keywords detected: (${matchedKeywords.join(', ')})` });
+            } else if (matchedKeywords.length === 1) {
+                score += 15;
+                checks.push({ name: 'Credential Keyword Trigger', status: 'warn', desc: `Sensitive keyword found: (${matchedKeywords[0]})` });
+            } else {
+                checks.push({ name: 'Credential Keyword Trigger', status: 'pass', desc: 'No suspicious brand impersonation keywords detected.' });
+            }
+
+            // 4. IP Address Domain Check
+            const ipPattern = /\b\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}\b/;
+            if (ipPattern.test(lowerUrl)) {
+                score += 30;
+                checks.push({ name: 'Host Format', status: 'fail', desc: 'Raw IP address used as domain instead of domain name.' });
+            } else {
+                checks.push({ name: 'Host Format', status: 'pass', desc: 'Valid domain format detected.' });
+            }
+
+            // 5. Embedded Credentials / @ Symbol
+            if (lowerUrl.includes('@')) {
+                score += 25;
+                checks.push({ name: 'URL Obfuscation (@ symbol)', status: 'fail', desc: 'Embedded userinfo credentials symbol (@) detected.' });
+            } else {
+                checks.push({ name: 'URL Obfuscation (@ symbol)', status: 'pass', desc: 'No user credential obfuscation detected.' });
+            }
+
+            // Cap risk score at 100
+            score = Math.min(score, 100);
+
+            // Determine Status
+            let verdict = 'SAFE';
+            if (score >= 60) verdict = 'MALICIOUS';
+            else if (score >= 25) verdict = 'SUSPICIOUS';
+
+            // Render Results UI
+            const resultsCard = document.getElementById('phishing-results');
+            resultsCard.classList.remove('hidden');
+
+            document.getElementById('phishing-target-domain').innerText = urlInput;
+            document.getElementById('phishing-risk-score').innerText = `Risk Index: ${score}/100`;
+
+            const badge = document.getElementById('phishing-status-badge');
+            const iconBox = document.getElementById('phishing-status-icon');
+            const summary = document.getElementById('phishing-verdict-summary');
+            const riskBar = document.getElementById('phishing-risk-bar');
+
+            riskBar.style.width = `${score}%`;
+
+            if (verdict === 'MALICIOUS') {
+                badge.className = "px-3 py-1 text-xs font-extrabold rounded-full bg-cyber-red/20 text-cyber-red border border-cyber-red/40 uppercase tracking-wider";
+                badge.innerText = "MALICIOUS PHISHING SITE";
+                iconBox.className = "w-16 h-16 rounded-2xl flex items-center justify-center bg-cyber-red/20 text-cyber-red border border-cyber-red/40 shadow-neon-red";
+                iconBox.innerHTML = `<i data-lucide="shield-alert" class="w-8 h-8"></i>`;
+                summary.innerText = "High threat level detected. This site exhibits multiple credential harvesting indicators.";
+                riskBar.className = "h-full transition-all duration-1000 bg-cyber-red shadow-neon-red";
+            } else if (verdict === 'SUSPICIOUS') {
+                badge.className = "px-3 py-1 text-xs font-extrabold rounded-full bg-cyber-amber/20 text-cyber-amber border border-cyber-amber/40 uppercase tracking-wider";
+                badge.innerText = "SUSPICIOUS DOMAIN";
+                iconBox.className = "w-16 h-16 rounded-2xl flex items-center justify-center bg-cyber-amber/20 text-cyber-amber border border-cyber-amber/40";
+                iconBox.innerHTML = `<i data-lucide="alert-triangle" class="w-8 h-8"></i>`;
+                summary.innerText = "Caution advised. Domain shows non-standard structures or unverified TLDs.";
+                riskBar.className = "h-full transition-all duration-1000 bg-cyber-amber";
+            } else {
+                badge.className = "px-3 py-1 text-xs font-extrabold rounded-full bg-cyber-green/20 text-cyber-green border border-cyber-green/40 uppercase tracking-wider";
+                badge.innerText = "VERIFIED SAFE";
+                iconBox.className = "w-16 h-16 rounded-2xl flex items-center justify-center bg-cyber-green/20 text-cyber-green border border-cyber-green/40 shadow-neon-green";
+                iconBox.innerHTML = `<i data-lucide="shield-check" class="w-8 h-8"></i>`;
+                summary.innerText = "URL passed all heuristic security scans with clean status.";
+                riskBar.className = "h-full transition-all duration-1000 bg-cyber-green shadow-neon-green";
+            }
+
+            // Render Checks List
+            const listContainer = document.getElementById('phishing-checks-list');
+            listContainer.innerHTML = '';
+            checks.forEach(check => {
+                let badgeClass = check.status === 'pass' ? 'bg-cyber-green/10 text-cyber-green border-cyber-green/20' : 
+                                (check.status === 'warn' ? 'bg-cyber-amber/10 text-cyber-amber border-cyber-amber/20' : 'bg-cyber-red/10 text-cyber-red border-cyber-red/20');
+                let iconName = check.status === 'pass' ? 'check-circle-2' : (check.status === 'warn' ? 'alert-circle' : 'x-circle');
+
+                listContainer.innerHTML += `
+                    <div class="p-3 rounded-xl bg-cyber-dark/60 border border-slate-800 flex items-start justify-between">
+                        <div class="space-y-0.5">
+                            <p class="text-xs font-bold text-slate-200">${check.name}</p>
+                            <p class="text-[11px] text-slate-400">${check.desc}</p>
+                        </div>
+                        <span class="px-2 py-1 rounded-md text-[10px] font-bold border ${badgeClass} flex items-center gap-1 code-font uppercase">
+                            <i data-lucide="${iconName}" class="w-3 h-3"></i> ${check.status}
+                        </span>
+                    </div>
+                `;
+            });
+
+            // Metadata Box
+            document.getElementById('meta-protocol').innerText = hasHttps ? "HTTPS (Encrypted)" : "HTTP (Plaintext)";
+            document.getElementById('meta-ssl').innerText = hasHttps ? "Valid Active SSL" : "Missing / Insecure";
+            document.getElementById('meta-tld').innerText = hasSuspiciousTLD ? "Suspicious High-Risk TLD" : "Standard Safe TLD";
+            document.getElementById('meta-creds').innerText = lowerUrl.includes('@') ? "Detected Embedded User Creds" : "None";
+            document.getElementById('meta-subdomains').innerText = (lowerUrl.split('.').length - 1) > 3 ? "Excessive Subdomains Detected" : "Normal Depth";
+
+            // Add Log
+            addLogEntry('Phishing Web', urlInput, verdict, score);
+            lucide.createIcons();
+        }
+
+        // --- STREAMING_CHUNK:Email Spam & Phishing Detection Logic... ---
+        // --- 2. EMAIL SPAM & PHISHING MODULE ---
+        function loadDemoEmail(type) {
+            if (type === 'phish') {
+                document.getElementById('email-sender-input').value = "security-alert@paypaI-support-verification.com";
+                document.getElementById('email-subject-input').value = "URGENT: Your Account Has Been Locked - Verify Immediately!";
+                document.getElementById('email-body-input').value = "Dear Customer,\n\nWe detected unauthorized login attempts from an unknown device. Your account will be permanently suspended within 24 hours unless you confirm your identity.\n\nPlease click here to enter your SSN, password and credit card details to restore access immediately: http://paypal-security-update.tk/login\n\nFailure to act now will lead to total legal termination.";
+            } else if (type === 'spam') {
+                document.getElementById('email-sender-input').value = "offers@super-cheap-pills-discount.xyz";
+                document.getElementById('email-subject-input').value = "CONGRATULATIONS! You Won a $1,000 Amazon Gift Card!";
+                document.getElementById('email-body-input').value = "You have been selected as today's lucky winner! Claim your $1,000 gift card now before timer expires. Click here to buy cheap meds and earn double bonus rewards instantly!";
+            } else {
+                document.getElementById('email-sender-input').value = "alex.rivera@techcorp.com";
+                document.getElementById('email-subject-input').value = "Project Architecture Review & Q3 Roadmap Update";
+                document.getElementById('email-body-input').value = "Hi Team,\n\nPlease find attached the updated architecture deck for next quarter. Let me know if you have any questions regarding the deployment timeline.\n\nBest regards,\nAlex";
+            }
+        }
+
+        function analyzeEmailContent() {
+            const sender = document.getElementById('email-sender-input').value.trim();
+            const subject = document.getElementById('email-subject-input').value.trim();
+            const body = document.getElementById('email-body-input').value.trim();
+
+            if (!sender && !body) {
+                alert("Please enter sender email or message body to analyze.");
+                return;
+            }
+
+            const fullText = (subject + " " + body).toLowerCase();
+            let score = 0;
+            let triggers = [];
+            let flaggedKeywords = [];
+
+            // Urgency & Psychological Threat Keywords
+            const urgencyWords = ['urgent', 'suspended', 'immediately', 'locked', 'action required', 'terminate', '24 hours', 'unauthorized', 'legal action'];
+            urgencyWords.forEach(word => {
+                if (fullText.includes(word)) {
+                    score += 12;
+                    flaggedKeywords.push(word);
+                    if (!triggers.some(t => t.title === 'Urgency & Pressure Tactics')) {
+                        triggers.push({ title: 'Urgency & Pressure Tactics', desc: 'High-pressure phrasing forcing quick compliance without thinking.' });
+                    }
+                }
+            });
+
+            // Sensitive Data Requests
+            const dataWords = ['ssn', 'social security', 'password', 'credit card', 'confirm identity', 'billing details', 'pin'];
+            dataWords.forEach(word => {
+                if (fullText.includes(word)) {
+                    score += 20;
+                    flaggedKeywords.push(word);
+                    if (!triggers.some(t => t.title === 'Sensitive Data Solicitation')) {
+                        triggers.push({ title: 'Sensitive Data Solicitation', desc: 'Explicitly requests sensitive credentials, financial, or personal data.' });
+                    }
+                }
+            });
+
+            // Marketing Spam / Prize triggers
+            const spamWords = ['winner', 'congratulations', 'gift card', 'cheap pills', 'claim now', 'bonus rewards', '100% free'];
+            spamWords.forEach(word => {
+                if (fullText.includes(word)) {
+                    score += 15;
+                    flaggedKeywords.push(word);
+                    if (!triggers.some(t => t.title === 'Marketing Spam / Scam Indicators')) {
+                        triggers.push({ title: 'Marketing Spam / Scam Indicators', desc: 'Exaggerated rewards, medical spam, or free prize baiting.' });
+                    }
+                }
+            });
+
+            // Sender Domain Spoofing Check
+            if (sender.includes('paypaI') || sender.includes('micros0ft') || sender.includes('supp0rt') || sender.includes('.xyz') || sender.includes('.tk')) {
+                score += 30;
+                triggers.push({ title: 'Fake Domain Spoofing / Typosquatting', desc: 'Sender domain utilizes character substitution (e.g., uppercase I for l) or suspicious TLD.' });
+            }
+
+            // Suspicious Link In Body Check
+            if (body.includes('http://') || body.includes('.tk/') || body.includes('.xyz/')) {
+                score += 20;
+                triggers.push({ title: 'Unencrypted / Dangerous Embedded Links', desc: 'Body contains unencrypted or high-risk domain hyperlink targets.' });
+            }
+
+            score = Math.min(score, 100);
+
+            let verdict = 'CLEAN';
+            if (score >= 55) verdict = 'PHISHING EMAIL';
+            else if (score >= 25) verdict = 'SPAM / SUSPICIOUS';
+
+            // Show results container
+            document.getElementById('email-results').classList.remove('hidden');
+
+            // Set Verdict Card
+            const badge = document.getElementById('email-status-badge');
+            const iconBox = document.getElementById('email-status-icon');
+            const title = document.getElementById('email-verdict-title');
+            const desc = document.getElementById('email-verdict-desc');
+            const confidence = document.getElementById('email-confidence-score');
+
+            confidence.innerText = `Threat Confidence: ${score}%`;
+            title.innerText = subject || "No Subject";
+
+            if (verdict === 'PHISHING EMAIL') {
+                badge.className = "px-3 py-1 text-xs font-extrabold rounded-full bg-cyber-red/20 text-cyber-red border border-cyber-red/40 uppercase tracking-wider";
+                badge.innerText = "HIGH RISK PHISHING MAIL";
+                iconBox.className = "w-16 h-16 rounded-2xl flex items-center justify-center bg-cyber-red/20 text-cyber-red border border-cyber-red/40 shadow-neon-red";
+                iconBox.innerHTML = `<i data-lucide="mail-warning" class="w-8 h-8"></i>`;
+                desc.innerText = "Critical phishing markers detected. Do not click links or submit credentials.";
+            } else if (verdict === 'SPAM / SUSPICIOUS') {
+                badge.className = "px-3 py-1 text-xs font-extrabold rounded-full bg-cyber-amber/20 text-cyber-amber border border-cyber-amber/40 uppercase tracking-wider";
+                badge.innerText = "UNSOLICITED SPAM MAIL";
+                iconBox.className = "w-16 h-16 rounded-2xl flex items-center justify-center bg-cyber-amber/20 text-cyber-amber border border-cyber-amber/40";
+                iconBox.innerHTML = `<i data-lucide="alert-octagon" class="w-8 h-8"></i>`;
+                desc.innerText = "Email matches promotional or spam heuristics. Proceed with caution.";
+            } else {
+                badge.className = "px-3 py-1 text-xs font-extrabold rounded-full bg-cyber-green/20 text-cyber-green border border-cyber-green/40 uppercase tracking-wider";
+                badge.innerText = "CLEAN MAIL";
+                iconBox.className = "w-16 h-16 rounded-2xl flex items-center justify-center bg-cyber-green/20 text-cyber-green border border-cyber-green/40 shadow-neon-green";
+                iconBox.innerHTML = `<i data-lucide="mail-check" class="w-8 h-8"></i>`;
+                desc.innerText = "No deceptive or malicious indicators identified in body or sender header.";
+            }
+
+            // Highlight words in Text Box
+            let highlightedText = body || subject || "No body content provided.";
+            flaggedKeywords.forEach(kw => {
+                const regex = new RegExp(`(${kw})`, 'gi');
+                highlightedText = highlightedText.replace(regex, `<mark class="bg-cyber-red/30 text-cyber-red border border-cyber-red/50 px-1 py-0.5 rounded">$1</mark>`);
+            });
+            document.getElementById('email-highlighted-box').innerHTML = highlightedText;
+
+            // Render Trigger list
+            const triggerList = document.getElementById('email-triggers-list');
+            triggerList.innerHTML = '';
+            if (triggers.length === 0) {
+                triggerList.innerHTML = `<p class="text-xs text-cyber-green flex items-center gap-2"><i data-lucide="check-circle" class="w-4 h-4"></i> No suspicious psychological or domain flags detected.</p>`;
+            } else {
+                triggers.forEach(trig => {
+                    triggerList.innerHTML += `
+                        <div class="p-3 rounded-xl bg-cyber-dark/60 border border-slate-800 space-y-1">
+                            <div class="text-xs font-bold text-cyber-red flex items-center gap-1.5">
+                                <i data-lucide="shield-alert" class="w-3.5 h-3.5"></i> ${trig.title}
+                            </div>
+                            <p class="text-[11px] text-slate-400">${trig.desc}</p>
+                        </div>
+                    `;
+                });
+            }
+
+            // Log entry
+            addLogEntry('Email Inspector', subject || sender, verdict, score);
+            lucide.createIcons();
+        }
+
+        // --- STREAMING_CHUNK:Malware Detection & File Inspection Logic... ---
+        // --- 3. MALWARE FILE INSPECTION MODULE ---
+        function handleFileSelect(e) {
+            if (e.target.files.length) {
+                handleFileSelection(e.target.files[0]);
+            }
+        }
+
+        function handleFileSelection(file) {
+            selectedFileObject = file;
+            document.getElementById('selected-file-card').classList.remove('hidden');
+            document.getElementById('file-name').innerText = file.name;
+            document.getElementById('file-size').innerText = `${(file.size / 1024).toFixed(2)} KB`;
+        }
+
+        function loadDemoFile(type) {
+            let mockFile = {};
+            if (type === 'malware') {
+                mockFile = { name: "invoice_march_2026.pdf.exe", size: 452000, type: "executable" };
+            } else if (type === 'script') {
+                mockFile = { name: "autorun_updater.vbs", size: 12000, type: "script" };
+            } else {
+                mockFile = { name: "quarterly_financial_report.xlsx", size: 1240000, type: "document" };
+            }
+
+            selectedFileObject = mockFile;
+            document.getElementById('selected-file-card').classList.remove('hidden');
+            document.getElementById('file-name').innerText = mockFile.name;
+            document.getElementById('file-size').innerText = `${(mockFile.size / 1024).toFixed(2)} KB`;
+        }
+
+        function analyzeFile() {
+            if (!selectedFileObject) return;
+
+            const fileName = selectedFileObject.name;
+            const lowerName = fileName.toLowerCase();
+            let score = 0;
+            let checks = [];
+
+            // 1. Extension Threat Checks
+            const highRiskExts = ['.exe', '.vbs', '.bat', '.scr', '.ps1', '.cmd', '.dll', '.jar', '.vbe'];
+            const fileExt = lowerName.substring(lowerName.lastIndexOf('.'));
+
+            if (highRiskExts.includes(fileExt)) {
+                score += 40;
+                checks.push({ title: 'Executable Extension Risk', status: 'fail', desc: `File extension (${fileExt}) allows direct command/binary execution.` });
+            } else {
+                checks.push({ title: 'File Extension Risk', status: 'pass', desc: 'File extension belongs to standard non-executable container.' });
+            }
+
+            // 2. Dual Extension Detection (e.g. invoice.pdf.exe)
+            const parts = lowerName.split('.');
+            if (parts.length > 2) {
+                score += 35;
+                checks.push({ title: 'Obfuscated Dual Extension', status: 'fail', desc: 'Multiple file extensions detected! Common spoofing tactic for masquerading as document.' });
+            } else {
+                checks.push({ title: 'Dual Extension Check', status: 'pass', desc: 'Single clean extension structure.' });
+            }
+
+            // 3. Suspicious Keyword Patterns
+            if (lowerName.includes('invoice') || lowerName.includes('receipt') || lowerName.includes('autorun') || lowerName.includes('updater')) {
+                score += 15;
+                checks.push({ title: 'Social Engineering Filename', status: 'warn', desc: 'Filename relies on financial or system updater lure keywords.' });
+            }
+
+            // Cap risk score
+            score = Math.min(score, 100);
+
+            // Hash Generation Simulation
+            const mockMd5 = generateMockHash(fileName, 32);
+            const mockSha256 = generateMockHash(fileName, 64);
+
+            let verdict = 'SAFE';
+            if (score >= 50) verdict = 'MALICIOUS PAYLOAD';
+            else if (score >= 20) verdict = 'SUSPICIOUS FILE';
+
+            // Show results UI
+            document.getElementById('malware-results').classList.remove('hidden');
+
+            document.getElementById('hash-md5').innerText = mockMd5;
+            document.getElementById('hash-sha256').innerText = mockSha256;
+
+            const badge = document.getElementById('malware-status-badge');
+            const iconBox = document.getElementById('malware-status-icon');
+            const title = document.getElementById('malware-verdict-title');
+            const desc = document.getElementById('malware-verdict-desc');
+            const scoreText = document.getElementById('malware-threat-score');
+            const dbStatus = document.getElementById('hash-db-status');
+
+            scoreText.innerText = `Threat Level: ${score}/100`;
+            title.innerText = fileName;
+
+            if (verdict === 'MALICIOUS PAYLOAD') {
+                badge.className = "px-3 py-1 text-xs font-extrabold rounded-full bg-cyber-red/20 text-cyber-red border border-cyber-red/40 uppercase tracking-wider";
+                badge.innerText = "TROJAN / MALWARE THREAT";
+                iconBox.className = "w-16 h-16 rounded-2xl flex items-center justify-center bg-cyber-red/20 text-cyber-red border border-cyber-red/40 shadow-neon-red";
+                iconBox.innerHTML = `<i data-lucide="bug" class="w-8 h-8"></i>`;
+                desc.innerText = "File flagged with high severity. Do not execute or unpack binary contents.";
+                dbStatus.innerHTML = `<span class="text-cyber-red font-bold">MATCH FOUND: Threat Intelligence Vector (Trojan.Win32.Generic)</span>`;
+            } else if (verdict === 'SUSPICIOUS FILE') {
+                badge.className = "px-3 py-1 text-xs font-extrabold rounded-full bg-cyber-amber/20 text-cyber-amber border border-cyber-amber/40 uppercase tracking-wider";
+                badge.innerText = "SUSPICIOUS VECTOR";
+                iconBox.className = "w-16 h-16 rounded-2xl flex items-center justify-center bg-cyber-amber/20 text-cyber-amber border border-cyber-amber/40";
+                iconBox.innerHTML = `<i data-lucide="file-warning" class="w-8 h-8"></i>`;
+                desc.innerText = "File contains unusual extension or naming patterns.";
+                dbStatus.innerHTML = `<span class="text-cyber-amber font-bold">UNVERIFIED HASH: Low confidence match in threat DB</span>`;
+            } else {
+                badge.className = "px-3 py-1 text-xs font-extrabold rounded-full bg-cyber-green/20 text-cyber-green border border-cyber-green/40 uppercase tracking-wider";
+                badge.innerText = "CLEAN FILE";
+                iconBox.className = "w-16 h-16 rounded-2xl flex items-center justify-center bg-cyber-green/20 text-cyber-green border border-cyber-green/40 shadow-neon-green";
+                iconBox.innerHTML = `<i data-lucide="file-check-2" class="w-8 h-8"></i>`;
+                desc.innerText = "File signature aligns with benign standard parameters.";
+                dbStatus.innerHTML = `<span class="text-cyber-green font-bold">CLEAN: Hash matches trusted software signature DB</span>`;
+            }
+
+            // Render Checks List
+            const checksList = document.getElementById('malware-checks-list');
+            checksList.innerHTML = '';
+            checks.forEach(check => {
+                let badgeClass = check.status === 'pass' ? 'bg-cyber-green/10 text-cyber-green border-cyber-green/20' : 
+                                (check.status === 'warn' ? 'bg-cyber-amber/10 text-cyber-amber border-cyber-amber/20' : 'bg-cyber-red/10 text-cyber-red border-cyber-red/20');
+                
+                checksList.innerHTML += `
+                    <div class="p-3 rounded-xl bg-cyber-dark/60 border border-slate-800 flex items-start justify-between">
+                        <div class="space-y-0.5">
+                            <p class="text-xs font-bold text-slate-200">${check.title}</p>
+                            <p class="text-[11px] text-slate-400">${check.desc}</p>
+                        </div>
+                        <span class="px-2 py-1 rounded-md text-[10px] font-bold border ${badgeClass} uppercase code-font">
+                            ${check.status}
+                        </span>
+                    </div>
+                `;
+            });
+
+            // Add Log
+            addLogEntry('Malware Inspector', fileName, verdict, score);
+            lucide.createIcons();
+        }
+
+        // --- STREAMING_CHUNK:Log History & Logging System... ---
+        // --- LOG MANAGEMENT SYSTEM ---
+        function addLogEntry(vector, target, verdict, score) {
+            const newLog = {
+                id: `LOG-${Math.floor(1000 + Math.random() * 9000)}`,
+                timestamp: new Date().toISOString().replace('T', ' ').substring(0, 19),
+                vector: vector,
+                target: target.length > 35 ? target.substring(0, 35) + '...' : target,
+                verdict: verdict,
+                score: score
+            };
+
+            securityLogs.unshift(newLog);
+            renderLogs();
+        }
+
+        function renderLogs() {
+            const overviewTable = document.getElementById('overview-log-table');
+            const fullTable = document.getElementById('full-log-table');
+
+            overviewTable.innerHTML = '';
+            fullTable.innerHTML = '';
+
+            // Update Header Stats Dynamic Count
+            const threatCount = securityLogs.filter(l => l.verdict.includes('MALICIOUS') || l.verdict.includes('PHISHING')).length;
+            const cleanCount = securityLogs.filter(l => l.verdict.includes('SAFE') || l.verdict.includes('CLEAN')).length;
+            
+            document.getElementById('stat-threats').innerText = (1480 + threatCount).toLocaleString();
+            document.getElementById('stat-clean').innerText = (8920 + cleanCount).toLocaleString();
+
+            securityLogs.forEach((log, index) => {
+                let badgeClass = "bg-cyber-green/10 text-cyber-green border-cyber-green/30";
+                if (log.verdict.includes('MALICIOUS') || log.verdict.includes('PHISHING')) {
+                    badgeClass = "bg-cyber-red/10 text-cyber-red border-cyber-red/30";
+                } else if (log.verdict.includes('SUSPICIOUS') || log.verdict.includes('SPAM')) {
+                    badgeClass = "bg-cyber-amber/10 text-cyber-amber border-cyber-amber/30";
+                }
+
+                const rowHTML = `
+                    <tr class="hover:bg-cyber-dark/40 transition-colors">
+                        <td class="p-3 text-slate-400">${log.timestamp}</td>
+                        <td class="p-3 text-slate-200 font-semibold">${log.vector}</td>
+                        <td class="p-3 text-slate-300">${log.target}</td>
+                        <td class="p-3">
+                            <span class="px-2 py-0.5 rounded-full text-[10px] font-bold border ${badgeClass}">
+                                ${log.verdict}
+                            </span>
+                        </td>
+                        <td class="p-3 text-slate-200 font-bold">${log.score}/100</td>
+                    </tr>
+                `;
+
+                if (index < 5) overviewTable.innerHTML += rowHTML;
+                fullTable.innerHTML += rowHTML;
+            });
+        }
+
+        function clearLogs() {
+            securityLogs = [];
+            renderLogs();
+        }
+
+        function generateMockHash(input, length) {
+            let hash = "";
+            const chars = "abcdef0123456789";
+            for (let i = 0; i < length; i++) {
+                hash += chars.charAt(Math.floor(Math.random() * chars.length));
+            }
+            return hash;
+        }
+        // --- GMAIL LIVE INTEGRATION EXTENSION ---
+
+// Check URL parameters on page load to see if user just authenticated
+window.addEventListener('DOMContentLoaded', () => {
+  const urlParams = new URLSearchParams(window.location.search);
+  if (urlParams.get('gmail') === 'connected') {
+    updateGmailUI(true);
+    fetchAndScanGmail();
+  }
+});
+
+// Redirect user to Express OAuth initiation endpoint
+function connectGmail() {
+  window.location.href = 'http://localhost:3000/api/auth/google';
+}
+
+// Update Gmail Button Badge Visuals
+// Update Gmail Button Badge Visuals & Disconnect Button Visibility
+function updateGmailUI(isConnected) {
+  const btn = document.getElementById('gmail-connect-btn');
+  const disconnectBtn = document.getElementById('disconnect-gmail-btn');
+
+  if (isConnected) {
+    if (btn) {
+      btn.style.background = 'rgba(16, 185, 129, 0.15)';
+      btn.style.color = 'var(--accent-green)';
+      btn.style.borderColor = 'rgba(16, 185, 129, 0.3)';
+      btn.innerHTML = `<i class="fa-solid fa-circle-check"></i> Gmail Connected (Live)`;
+      btn.onclick = fetchAndScanGmail;
+    }
+    if (disconnectBtn) {
+      disconnectBtn.classList.remove('hidden');
+    }
+  } else {
+    if (btn) {
+      btn.style.background = '';
+      btn.style.color = '';
+      btn.style.borderColor = '';
+      btn.innerHTML = `<i class="fa-brands fa-google"></i> Connect Gmail`;
+      btn.onclick = connectGmail;
+    }
+    if (disconnectBtn) {
+      disconnectBtn.classList.add('hidden');
+    }
+  }
+}
+
+// Fetch Unread Emails from Backend and Run Through Detection Engine
+async function fetchAndScanGmail() {
+  try {
+    const response = await fetch('http://localhost:3000/api/gmail/unread');
+    const data = await response.json();
+
+    if (!data.connected) return;
+
+    if (data.emails.length === 0) {
+      alert('Gmail synced: No unread emails found in your inbox.');
+      return;
+    }
+
+    // Auto-fill form fields with the first fetched email
+    const firstEmail = data.emails[0];
+    document.getElementById('email-sender-input').value = firstEmail.sender;
+    document.getElementById('email-subject-input').value = firstEmail.subject;
+    document.getElementById('email-body-input').value = firstEmail.body;
+
+    // Automatically trigger analysis
+    if (typeof analyzeEmail === 'function') {
+      analyzeEmail();
+    }
+  } catch (err) {
+    console.error('Error auto-scanning Gmail:', err);
+  }
+}// Disconnect Gmail Session and Reset UI
+async function disconnectGmail() {
+  try {
+    const response = await fetch('http://localhost:3000/api/gmail/disconnect');
+    const data = await response.json();
+
+    if (data.success) {
+      // Clear URL parameters if present (?gmail=connected)
+      window.history.replaceState({}, document.title, window.location.pathname);
+
+      // Clear input fields in Email Inspector
+      const senderInput = document.getElementById('email-sender-input');
+      const subjectInput = document.getElementById('email-subject-input');
+      const bodyInput = document.getElementById('email-body-input');
+
+      if (senderInput) senderInput.value = '';
+      if (subjectInput) subjectInput.value = '';
+      if (bodyInput) bodyInput.value = '';
+
+      // Update UI state back to disconnected
+      updateGmailUI(false);
+
+      alert('Gmail account disconnected successfully.');
+    }
+  } catch (err) {
+    console.error('Error disconnecting Gmail:', err);
+  }
+}
+    </script>
+</body>
+</html>
