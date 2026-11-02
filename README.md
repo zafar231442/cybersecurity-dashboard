@@ -27,11 +27,13 @@ Security & Privacy Highlights (For Evaluators & Examiners)
 ---
 
  File Structure
+ ```
 major-project/
 ├── server.js             # Node.js Express server handling OAuth 2.0 & Gmail API endpoints
 ├── IntelliSOC.html       # Main SOC Dashboard UI, heuristic engine, & dynamic state handler
 ├── .env                  # Environment variables (Google Client ID & Secret - keep private)
 └── package.json          # Node.js project dependencies
+```
 
 #Prerequisites & Installation
 1. Prerequisites
